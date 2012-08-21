@@ -16,6 +16,7 @@ Copyright 1995 Philip Homburg
 #include "eth.h"
 #include "eth_int.h"
 #include "sr.h"
+#include "nfcore.h"
 
 THIS_FILE
 
@@ -484,6 +485,13 @@ int fd;
 acc_t *data;
 size_t data_len;
 {
+acc_t *temppack;
+unsigned char src_ip[4];
+unsigned char dst_ip[4];
+int verdict=NF_ACCEPT;
+int pack_len;
+char ifin[]="ethX";
+char ifout[]="ethX";
 	eth_fd_t *eth_fd;
 	eth_port_t *eth_port, *rep;
 	eth_hdr_t *eth_hdr;
@@ -491,6 +499,7 @@ size_t data_len;
 	unsigned long nweo_flags;
 	size_t count;
 	ev_arg_t ev_arg;
+	int i;
 
 	eth_fd= &eth_fd_table[fd];
 	eth_port= eth_fd->ef_port;
@@ -498,6 +507,49 @@ size_t data_len;
 	if (!(eth_fd->ef_flags & EFF_OPTSET))
 		return EBADMODE;
 
+        if (fd<3)
+        {
+           ifin[3]='1'-fd;
+           ifout[3]='0'+fd;
+        }
+        inetEthIn(ifin);
+        inetEthOut(ifout);
+/*printf("IP Packet to be sent: port=%d, len=%d\n",fd,data_len);*/
+for (temppack=data; temppack;)
+{
+  pack_len+=temppack->acc_length;
+  temppack=temppack->acc_next;
+}
+inetSetPackSize(pack_len);
+inetContainLayers(NF_LAYER_ETH);
+for (i=0, temppack=data, count=data_len; temppack && count>0;)
+{
+  inetSetDataSize(temppack->acc_length);
+  if (i==1)
+  {
+     *((uint32_t*)src_ip)=(*((uint32_t*)(&(temppack->acc_buffer->buf_data_p[12+temppack->acc_offset]))));
+     *((uint32_t*)dst_ip)=(*((uint32_t*)(&(temppack->acc_buffer->buf_data_p[16+temppack->acc_offset]))));
+  }
+  inetData( (void*) (&(temppack->acc_buffer->buf_data_p[temppack->acc_offset])) );
+  i++;
+  count-=temppack->acc_buffer->buf_size;
+  temppack=temppack->acc_next;
+  /*printf("\n----------------\n");*/
+}
+/*printf("\n");*/
+        if (inetCheckLocalIP(src_ip[0],src_ip[1],src_ip[2],src_ip[3])||
+            inetCheckLocalIP(dst_ip[0],dst_ip[1],dst_ip[2],dst_ip[3]))
+        {
+           inetHook(NF_IP_LOCAL_OUT);
+        }
+        else
+        {
+           inetHook(NF_IP_FORWARD);
+#ifdef _DEBUG
+  printf("eth.c.c :eth_send(): calls inetProcess()\n");
+#endif
+           verdict=inetProcess();
+        }
 	count= data_len;
 	if (eth_fd->ef_ethopt.nweo_flags & NWEO_RWDATONLY)
 		count += ETH_HDR_SIZE;
@@ -560,7 +612,14 @@ size_t data_len;
 		}
 	}
 
-	eth_write_port(rep, eth_pack);
+	if (verdict==NF_ACCEPT)
+	{
+	   eth_write_port(rep, eth_pack);
+	}
+	else
+	{ 
+	   bf_afree(eth_pack);
+	}
 	return NW_OK;
 }
 

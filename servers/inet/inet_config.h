@@ -60,7 +60,7 @@ struct udp_conf
 #define NETTYPE_PSIP	2
 
 /* To compute the minor device number for a device on an interface. */
-#define if2minor(ifno, dev)	(1 + (ifno) * 8 + (dev))
+#define if2minor(ifno, dev)	(1 + (ifno) * 10 + (dev))
 
 #define IPSTAT_DEV	"/dev/ipstat"
 #define IPSTAT_MODE	0666	/* Is this right? What about just setuid apps */
@@ -72,6 +72,7 @@ struct udp_conf
 #define IP_DEV_OFF	1
 #define TCP_DEV_OFF	2
 #define UDP_DEV_OFF	3
+#define NF_DEV_OFF	4
 
 extern struct eth_conf eth_conf[IP_PORT_MAX];
 extern struct psip_conf psip_conf[IP_PORT_MAX];

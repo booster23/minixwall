@@ -18,6 +18,8 @@ Copyright 1995 Philip Homburg
 #include "ip.h"
 #include "ip_int.h"
 #include "ipr.h"
+#include "nfcore.h"
+#include "nf.h"
 
 THIS_FILE
 
@@ -61,14 +63,45 @@ size_t data_len;
 	ip_hdr_t *ip_hdr, *tmp_hdr;
 	ipaddr_t dstaddr, nexthop, hostrep_dst, my_ipaddr, netmask;
 	u8_t *addrInBytes;
-	acc_t *tmp_pack, *tmp_pack1;
+	acc_t *tmp_pack, *tmp_pack1, *temppack;
 	int hdr_len, hdr_opt_len, r;
 	int type, ttl;
 	size_t req_mtu;
 	ev_arg_t arg;
+	int i,count;
+	char ifout[]="ethX";
 
 	ip_fd= &ip_fd_table[fd];
 	ip_port= ip_fd->if_port;
+
+#if 0
+        inetEthIn("");
+        ifout[3]='0'+ip_port->ip_dl.dl_eth.de_port;
+        inetEthOut(ifout);
+        inetSetPackSize(data_len);
+        for (i=0, temppack=data, count=data_len; temppack && count>0;)
+        {
+                inetSetDataSize(temppack->acc_buffer->buf_size);
+                inetData( (void*)(((vir_bytes)temppack->acc_buffer->buf_data_p)
+                          +temppack->acc_offset)
+                        );
+                i++; count-=temppack->acc_buffer->buf_size;
+                temppack=temppack->acc_next;
+        }
+        inetHook(NF_IP_LOCAL_OUT);
+
+        /* do the filtering work */
+#ifdef _DEBUG
+        printf("inet called by ip_write\n");
+#endif
+        if (inetProcess()==0)
+        {
+                inetGetData(NULL);
+                bf_afree(data);
+                return NW_OK;
+        } 
+        inetGetData(NULL);
+#endif
 
 	if (!(ip_fd->if_flags & IFF_OPTSET))
 	{
@@ -100,6 +133,13 @@ size_t data_len;
 
 	data= bf_packIffLess(data, IP_MIN_HDR_SIZE);
 	ip_hdr= (ip_hdr_t *)ptr2acc_data(data);
+/*
+for (i=0;i<20;i++)
+{
+  printf("%02x ",((unsigned char*) ip_hdr)[i]);
+}
+printf("\n");
+*/
 	if (data->acc_linkC != 1 || data->acc_buffer->buf_linkC != 1)
 	{
 		tmp_pack= bf_memreq(IP_MIN_HDR_SIZE);
@@ -180,6 +220,9 @@ size_t data_len;
 		IH_FLAGS_UNUSED | IH_MORE_FRAGS);
 	if (ip_fd->if_ipopt.nwio_flags & NWIO_PROTOSPEC)
 		ip_hdr->ih_proto= ip_fd->if_ipopt.nwio_proto;
+#ifdef _DEBUG
+        printf ("ip_write: Proto: %d\n",ip_hdr->ih_proto);
+#endif
 	ip_hdr->ih_id= htons(ip_port->ip_frame_id++);
 	ip_hdr->ih_src= ip_fd->if_port->ip_ipaddr;
 	if (ip_fd->if_ipopt.nwio_flags & NWIO_REMSPEC)
@@ -237,6 +280,10 @@ size_t data_len;
 
 	if ((addrInBytes[0] & 0xff) == 0x7f)	/* local loopback */
 	{
+#ifdef _DEBUG
+                printf("ip_write: To loopback: %08x\n",
+                       (unsigned long)ip_hdr->ih_dst);
+#endif
 		assert (data->acc_linkC == 1);
 		dstaddr= ip_hdr->ih_dst;	/* swap src and dst 
 						 * addresses */

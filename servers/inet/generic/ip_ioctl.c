@@ -16,6 +16,7 @@ Copyright 1995 Philip Homburg
 #include "ip.h"
 #include "ip_int.h"
 #include "ipr.h"
+#include "nfcore.h"
 
 THIS_FILE
 
@@ -249,6 +250,12 @@ ioreq_t req;
 		ipconf= (nwio_ipconf_t *)ptr2acc_data(data);
 		ipconf->nwic_flags= NWIC_IPADDR_SET;
 		ipconf->nwic_ipaddr= ip_port->ip_ipaddr;
+		inetRegisterLocalIP(
+		                      (ntohl(ip_port->ip_ipaddr)>>24)&0xff,
+		                      (ntohl(ip_port->ip_ipaddr)>>16)&0xff,
+		                      (ntohl(ip_port->ip_ipaddr)>>8)&0xff,
+		                      (ntohl(ip_port->ip_ipaddr)>>0)&0xff 
+		                   );
 		ipconf->nwic_netmask= ip_port->ip_subnetmask;
 		if (ip_port->ip_flags & IPF_NETMASKSET)
 			ipconf->nwic_flags |= NWIC_NETMASK_SET;
@@ -256,6 +263,9 @@ ioreq_t req;
 
 		result= (*ip_fd->if_put_userdata)(ip_fd->if_srfd, 0, data, 
 									TRUE);
+#ifdef _DEBUG
+    printf("returning out of NWIOGIPCONF\n");
+#endif
 		return (*ip_fd->if_put_userdata)(ip_fd->if_srfd, result, 
 							(acc_t *)0, TRUE);
 

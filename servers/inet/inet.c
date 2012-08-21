@@ -64,6 +64,7 @@ from DL_ETH:
 #include "generic/sr.h"
 #include "generic/tcp.h"
 #include "generic/udp.h"
+#include "generic/nf.h"
 
 THIS_FILE
 
@@ -319,12 +320,16 @@ PRIVATE void nw_init()
 	clck_init();
 	sr_init();
 	qp_init();
+	nf_init();
 	eth_init();
 	arp_init();
 	psip_init();
 	ip_init();
 	tcp_init();
 	udp_init();
+#ifdef _DEBUG
+  printf("inet.c :nw_init: return");
+#endif
 }
 
 /*===========================================================================*

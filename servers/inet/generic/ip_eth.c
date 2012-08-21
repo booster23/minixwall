@@ -20,6 +20,8 @@ Copyright 1995 Philip Homburg
 #include "io.h"
 #include "ip.h"
 #include "ip_int.h"
+#include "nfcore.h"
+#include "nf.h"
 
 THIS_FILE
 
@@ -276,6 +278,9 @@ int type;
 	ipaddr_t tmpaddr;
 	time_t t;
 	u32_t *p;
+	char ifout[]="ethX";
+	size_t count;
+	acc_t *temppack;
 
 	/* Start optimistic: the arp will succeed without blocking and the
 	 * ethernet packet can be sent without blocking also. Start with
@@ -300,6 +305,34 @@ int type;
 		eth_pack= bf_append(eth_pack, tail);
 	}
 	eth_hdr= (eth_hdr_t *)ptr2acc_data(eth_pack);
+
+        ifout[3]='0'+ip_port->ip_port;
+        inetEthIn(NULL);
+        inetEthOut(ifout);
+        inetSetPackSize(pack_size);
+        inetContainLayers(NF_LAYER_IP);
+         /* sending all buffer parts to the filter */
+        for (i=0, temppack=pack, count=pack_size; temppack && count>0;)
+        {
+                inetSetDataSize(temppack->acc_buffer->buf_size);
+                inetData((void*) (((vir_bytes)temppack->acc_buffer->buf_data_p)
+                        +temppack->acc_offset)
+                        );
+                i++; count-=temppack->acc_buffer->buf_size;
+                temppack=temppack->acc_next;
+        }
+        inetHook(NF_IP_POST_ROUTING);
+  
+         /* do the filtering work */
+#ifdef _DEBUG
+   printf("ip_eth.c :ipeth_send(): calls inetProcess()\n");
+#endif
+        if (inetProcess()==0) 
+        {
+           return NW_OK;
+        }
+        inetGetData(NULL);
+ 
 
 	/* Lookup the ethernet address */
 	if (type != IP_LT_NORMAL)
@@ -705,16 +738,46 @@ size_t pack_size;
 {
 	int broadcast;
 	ip_port_t *ip_port;
+	int i;
+	acc_t *temppack;
+	int count;
+	char ifin[]="ethX";
+	char ifout[]="ethX";
 
 	ip_port= &ip_port_table[port];
 	broadcast= (*(u8_t *)ptr2acc_data(pack) & 1);
 
 	pack= bf_delhead(pack, ETH_HDR_SIZE);
 
-	if (broadcast)
-		ip_arrived_broadcast(ip_port, pack);
-	else
-		ip_arrived(ip_port, pack);
+	ifin[3]='0'+port;
+	inetEthIn(ifin);
+	inetEthOut(NULL);
+	inetSetPackSize(pack_size);
+	inetContainLayers(NF_LAYER_IP);
+	 /* sending all buffer parts to the filter */
+	for (i=0, temppack=pack, count=pack_size; temppack && count>0;)
+	{
+	        inetSetDataSize(temppack->acc_buffer->buf_size);
+	        inetData((void*) (((vir_bytes)temppack->acc_buffer->buf_data_p)
+	                +temppack->acc_offset)
+	                );
+	        i++; count-=temppack->acc_buffer->buf_size;
+	        temppack=temppack->acc_next;
+	}
+	inetHook(NF_IP_PRE_ROUTING);
+	
+        /* do the filtering work */
+	#ifdef _DEBUG
+	  printf("ip_eth.c :ip_eth_arrived(): calls inetProcess()");
+	#endif
+	        if (inetProcess()==1) 
+	        {
+	           if (broadcast)
+	               ip_arrived_broadcast(ip_port, pack);
+	           else
+		       ip_arrived(ip_port, pack);
+		}
+		inetGetData(NULL);
 }
 
 /*

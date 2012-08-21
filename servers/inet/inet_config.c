@@ -116,10 +116,11 @@ static void check_dev(int type, int ifno)
 		{	"/dev/ip",	0600,	IP_DEV_OFF	},
 		{	"/dev/tcp",	0666,	TCP_DEV_OFF	},
 		{	"/dev/udp",	0666,	UDP_DEV_OFF	},
+		{	"/dev/netfilter",0600,	NF_DEV_OFF	},
 	};
 	struct devlist *dvp;
 	int i;
-	char device[sizeof("/dev/psip99")];
+	char device[sizeof("/dev/netfilter99")];
 	char *dp;
 
 	for (i= 0; i < sizeof(devlist) / sizeof(devlist[0]); i++) {

@@ -16,6 +16,8 @@ Copyright 1995 Philip Homburg
 #include "ip.h"
 #include "ip_int.h"
 #include "ipr.h"
+#include "nfcore.h"
+#include "nf.h"
 #include "sr.h"
 
 THIS_FILE
@@ -482,9 +484,45 @@ ip_hdr_t *ip_hdr;
 	int i;
 	int hash, proto;
 	time_t exp_time;
+	char ifin[]="ethX";
+	acc_t *temppack;
+	size_t pack_size;
+	int count;
 
 	assert (pack->acc_linkC>0);
 	assert (pack->acc_length >= IP_MIN_HDR_SIZE);
+
+/*printf("ip_read: Proto: %d\n",ip_hdr->ih_proto);*/
+        pack_size=pack->acc_length;
+        ifin[3]='0'+ip_port->ip_dl.dl_eth.de_port;
+        inetEthIn(ifin);
+        inetEthOut("");
+        inetSetPackSize(pack_size);
+        inetContainLayers(NF_LAYER_IP);
+
+        /* sending all buffer parts to the filter */
+        for (i=0, temppack=pack, count=pack_size; temppack && count>0;)
+        {
+                inetSetDataSize(temppack->acc_buffer->buf_size);
+                inetData((void*) (((vir_bytes)temppack->acc_buffer->buf_data_p)
+                        +temppack->acc_offset)
+                        );
+                i++; count-=temppack->acc_buffer->buf_size;
+                temppack=temppack->acc_next;
+        }
+        inetHook(NF_IP_LOCAL_IN);
+ 
+        /* do the filtering work */
+#ifdef _DEBUG
+  printf("ip_read.c :ip_port_arrive(): calls inetProcess()");
+#endif
+        if (!inetProcess())
+        {
+               inetGetData(NULL);
+               bf_afree(pack); pack= NULL;
+               return;
+        }
+        inetGetData(NULL);
 
 	if (ntohs(ip_hdr->ih_flags_fragoff) & (IH_FRAGOFF_MASK|IH_MORE_FRAGS))
 	{
@@ -715,6 +753,9 @@ assert (pack->acc_length >= IP_MIN_HDR_SIZE);
 	ip_port->ip_routeq_head= pack;
 	ip_port->ip_routeq_tail= pack;
 	ev_arg.ev_ptr= ip_port;
+#ifdef _DEBUG
+  printf("ip_read.c :ip_arrived():enqueue route_packets()\n");
+#endif
 	ev_enqueue(&ip_port->ip_routeq_event, route_packets, ev_arg);
 }
 
@@ -797,6 +838,16 @@ ev_arg_t ev_arg;
 	ip_hdr_t *ip_hdr;
 	size_t req_mtu;
 
+        char ifin[]="ethX";
+        char ifout[]="ethX";
+        size_t pack_size;
+        acc_t *temppack;
+        int i,count;
+
+#ifdef _DEBUG
+  printf("ip_read.c :route_packets(): enter\n");
+#endif
+
 	ip_port= ev_arg.ev_ptr;
 	assert(&ip_port->ip_routeq_event == ev);
 
@@ -806,6 +857,43 @@ ev_arg_t ev_arg;
 
 		ip_hdr= (ip_hdr_t *)ptr2acc_data(pack);
 		dest= ip_hdr->ih_dst;
+
+                temppack= (acc_t *)ip_hdr; /*ip_hdr; << brian original*/
+#ifdef _DEBUG
+  printf("ip_read.c :route_packets(): temppack->acclength: %d\n",temppack->acc_length);
+#endif
+                if (temppack)
+                {
+                  ifin[3]='0'+ip_port->ip_port;
+                  ifout[3]='0'+ip_port->ip_port;
+                  pack_size=temppack->acc_length;
+                  inetEthIn(ifin);
+                  inetEthOut(ifout);
+                  inetSetPackSize(pack_size);
+                  inetContainLayers(NF_LAYER_IP);
+                  /* sending all buffer parts to the filter */
+                  for (i=0, temppack=pack, count=pack_size; temppack && count>0;)
+                  {
+                          inetSetDataSize(temppack->acc_buffer->buf_size);
+                          inetData((void*) (((vir_bytes)temppack->acc_buffer->buf_data_p)
+                                  +temppack->acc_offset)
+                                  );
+                          i++; count-=temppack->acc_buffer->buf_size;
+                          temppack=temppack->acc_next;
+                  }
+                  inetHook(NF_IP_FORWARD);
+         
+                  /* do the filtering work */
+#ifdef _DEBUG
+  printf("ip_read.c :route_packets(): calls inetProcess()\n");
+#endif
+                  if (inetProcess()==0) 
+                  {
+                       inetGetData(NULL);
+                       continue;
+                  }
+                  inetGetData(NULL);
+                }
 
 		iroute= iroute_frag(ip_port->ip_port, dest);
 		if (iroute == NULL || iroute->irt_dist == IRTD_UNREACHABLE)
