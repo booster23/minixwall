@@ -9,7 +9,6 @@ b = $i/ibm
 d = ..
 
 # programs, flags, etc.
-CC =	exec cc
 CFLAGS = -I$i -I../include
 LDFLAGS = -i
 LIBS =

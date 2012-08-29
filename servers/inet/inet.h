@@ -95,7 +95,7 @@ _PROTOTYPE( void inet_panic, (void) ) _NORETURN;
 		{ where(); code; } } while(0)
 
 #if _ANSI
-#define ARGS(x) x
+//#define ARGS(x) x
 #else /* _ANSI */
 #define ARGS(x) ()
 #endif /* _ANSI */

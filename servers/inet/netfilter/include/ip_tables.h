@@ -23,18 +23,18 @@
 #include <netfilter_ipv4.h>
 #include <nfdefs.h>
 
-#define IPT_FUNCTION_MAXNAMELEN 30
-#define IPT_TABLE_MAXNAMELEN 32
-#define IPT_CHAIN_MAXNAMELEN 32
-#define IPT_MATCH_MAXNAMELEN 32
-#define IPT_TARGET_MAXNAMELEN 32
+#define IPT_FUNCTION_MAXNAMELEN 128
+#define IPT_TABLE_MAXNAMELEN 128 
+#define IPT_CHAIN_MAXNAMELEN 128
+#define IPT_MATCH_MAXNAMELEN 128
+#define IPT_TARGET_MAXNAMELEN 128
 
 #define max(a,b) (a>=b?a:b)
 #define MATCHINFO_MAXSIZE max(   sizeof(struct ipt_tcp),\
                                  max(  sizeof(struct ipt_udp),\
                                  sizeof(struct ipt_icmp) )  )
 
-#define TARGINFO_MAXSIZE 32
+#define TARGINFO_MAXSIZE 128
 
 /* Yes, Virginia, you have to zero the padding. */
 struct ipt_ip {

@@ -53,15 +53,15 @@
 
 #define min(a,b) (a<=b?a:b)
 
-int inetLocalIPcount;
+static int inetLocalIPcount;
 char inetLocalIPs[MAX_LOCAL_IPS][4];
 char currInIf[IF_NAMESIZE];
 char currOutIf[IF_NAMESIZE];
 struct buffer currData;
 char *afterData;
-int currDataSize;
-int currPackSize;
-int currLayerID;
+static int currDataSize;
+static int currPackSize;
+static int currLayerID;
 unsigned int hooknum;
 
 struct ipt_table *selectedTable;
@@ -75,8 +75,8 @@ unsigned char targetInfo[TARGINFO_MAXSIZE];
 
 static struct ipt_target* target_mods[32];
 static struct ipt_match* match_mods[32];
-int targetmodcounter;
-int matchmodcounter;
+static int targetmodcounter;
+static int matchmodcounter;
 static struct ipt_table tab_filter, tab_nat, tab_mangle;
 
 void nfCoreInit(void)

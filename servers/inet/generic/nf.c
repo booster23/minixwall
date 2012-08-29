@@ -23,7 +23,7 @@ PUBLIC void nf_prep( void )
 {
 }
 
-PUBLIC int nf_open( port, srfd, get_userdata_func, put_userdata_func,
+PRIVATE int nf_open( port, srfd, get_userdata_func, put_userdata_func,
              put_pkt, select_res )
 int port;
 int srfd;
@@ -45,7 +45,7 @@ select_res_t select_res;
 	return 0;
 }
 
-PUBLIC void nf_close( fd )
+PRIVATE void nf_close( fd )
 int fd;
 {
 	nf_opened=FALSE;
@@ -56,11 +56,11 @@ PUBLIC int nf_init( void )
 	nfCoreInit();
 	sr_add_minor(if2minor(0, NF_DEV_OFF),
 		0, nf_open, nf_close, nf_read,
-		nf_write, nf_ioctl, nf_cancel, NULL);
+		nf_write, nf_ioctl, nf_cancel, nf_select);
 	nf_opened=FALSE;
 }
 
-PUBLIC int nf_ioctl( fd, request )
+PRIVATE int nf_ioctl( fd, request )
 int fd;
 ioreq_t request;
 {
@@ -77,7 +77,7 @@ ioreq_t request;
   return NW_OK;
 }
 
-PUBLIC int nf_read( fd, count )
+PRIVATE int nf_read( fd, count )
 int fd;
 size_t count;
 {
@@ -93,7 +93,7 @@ size_t count;
   return NW_OK;
 }
 
-PUBLIC int nf_write( fd, count )
+PRIVATE int nf_write( fd, count )
 int fd;
 size_t count;
 {
@@ -110,7 +110,7 @@ size_t count;
   if (ioctl_pend)
   {
     /* fetch data from iptables */
-    printf("nf_write:nf_srfd>%x  count>%u\n", nf_fd->nf_srfd, count);
+    printf("nf_write:nf_srfd=%x  count=%u\n", nf_fd->nf_srfd, count);
     data=(*nf_fd->nf_get_userdata)(nf_fd->nf_srfd,0,count,FALSE);
     assert(data);
     data_p=data->acc_buffer->buf_data_p;
@@ -157,7 +157,7 @@ int for_ioctl;
 	assert (!result);
 }
 
-PUBLIC int nf_cancel(fd, which_operation)
+PRIVATE int nf_cancel(fd, which_operation)
 int fd;
 int which_operation;
 {
@@ -175,5 +175,13 @@ int which_operation;
 	default:
 		ip_panic(( "got unknown cancel request" ));
 	}
+	return NW_OK;
+}
+
+PRIVATE int nf_select(fd, operations)
+int fd;
+int operations;
+{
+	ip_panic(( "got unimplemented select call" ));
 	return NW_OK;
 }

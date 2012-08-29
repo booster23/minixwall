@@ -668,13 +668,9 @@ int main (int argc, char **argv)
                        break;
       default:         break;
     }
-    printf("1. ioctl\n");
     ioctl(fd,IOCTL_IPT_SET_IP_MATCHINFO,NULL);
-    printf("1. write\n");
     write(fd,&ip_matchinfo,sizeof(struct ipt_ip));
-    printf("2. ioctl\n");
     ioctl(fd,IOCTL_IPT_SET_TARGET,NULL);
-    printf("2. write\n");
     if (!write(fd,target,strlen(target)+1))
     {
       printf("no such target: %s\n",target);
@@ -682,15 +678,10 @@ int main (int argc, char **argv)
       exit(3);
     }
     strncpy(log_targinfo.prefix, logprefix,30);
-    printf("3. ioctl\n");
     ioctl(fd,IOCTL_IPT_SET_TARGINFO,NULL);
-    printf("3. write\n");
     write(fd,&log_targinfo,sizeof(log_targinfo));
-    printf("4. ioctl\n");
     ioctl(fd,IOCTL_IPT_APPEND,NULL);
-    printf("4. write > fd,0,1 <\n");
     write(fd,0,1);
-    printf("leaving append_if\n");
   }
   if (action==A_POLICY)
   {

@@ -13,15 +13,16 @@ typedef struct nf_fd
 
 
 void nf_prep( void );
-int nf_open( int port, int srfd, get_userdata_t get_userdata_func,
+PRIVATE int nf_open( int port, int srfd, get_userdata_t get_userdata_func,
              put_userdata_t put_userdata_func,
              put_pkt_t put_pkt, select_res_t select_res );
-void nf_close( int fd );
+PRIVATE void nf_close( int fd );
 int nf_init( void );
-int nf_ioctl( int fd, ioreq_t request );
-int nf_read( int fd, size_t count );
-int nf_write( int fd, size_t count );
+PRIVATE int nf_ioctl( int fd, ioreq_t request );
+PRIVATE int nf_read( int fd, size_t count );
+PRIVATE int nf_write( int fd, size_t count );
 void reply_thr_put(nf_fd_t *nf_fd, int reply, int for_ioctl);
 void reply_thr_get(nf_fd_t *nf_fd, int reply, int for_ioctl);
-int nf_cancel(int fd, int which_operation);
+PRIVATE int nf_cancel(int fd, int which_operation);
+PRIVATE int nf_select(int fd, int operations);
 #endif
